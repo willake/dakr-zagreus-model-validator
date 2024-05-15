@@ -19,25 +19,20 @@ local function meanAbsoluteError(predicted, actual)
     return sumError / n
 end
 
-local learningRate = 10 -- set between 1, 100
+local learningRate = 5 -- set between 1, 100
 local attempts = 10 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
 --create a network with 2 inputs, 3 hidden cells, and 1 output
 -- myNetwork = luann:new({6, 6, 6, 4}, learningRate, threshold)
-local myNetwork = luann:new({14, 14, 14, 4}, learningRate, threshold)
+local myNetwork = luann:new({10, 10, 10, 4}, learningRate, threshold)
 
 local trainingData = luann:loadTrainingDataFromFile("DZrecord.log")
 local testingData = luann:loadTrainingDataFromFile("DZtest.log")
 
 -- make new training data
 for i = 3, #trainingData do
-    local prev = trainingData[i - 1][2]
     local prev2 = trainingData[i - 2][2]
-    
-    for j = 1, 4 do
-        table.insert(trainingData[i][1], prev[j])
-    end
 
     for j = 1, 4 do
         table.insert(trainingData[i][1], prev2[j])
@@ -47,12 +42,7 @@ for i = 3, #trainingData do
 end
 
 for i = 3, #testingData do
-    local prev = testingData[i - 1][2]
     local prev2 = testingData[i - 2][2]
-    
-    for j = 1, 4 do
-        table.insert(testingData[i][1], prev[j])
-    end
 
     for j = 1, 4 do
         table.insert(testingData[i][1], prev2[j])
