@@ -1,20 +1,48 @@
 local helper = {}
--- Function to calculate Mean Absolute Error (MAE)
-function helper.meanAbsoluteError(predicted, actual)
+-- Function to calculate Mean Absolute Error (MAE) and Mean Squared Error (MSE)
+function helper.calculateAbsoluteError(prediction, truth, outputCount)
     local sumError = 0
-    local n = #predicted
-    local m = #predicted[1] -- num of outputs
-
-    for i = 1, n do
-        local outputError = 0
-        for j = 1, 3 do -- only test first three outputs
-            outputError = outputError + math.abs(predicted[i][j] - actual[i][j])
-        end
-        local mean = outputError / m
-        sumError = sumError + mean
+    for i = 1, outputCount do -- only test first three outputs
+        sumError = sumError + math.abs(prediction[i] - truth[i])
     end
 
-    return sumError / n
+    return sumError / outputCount
+end
+
+function helper.calculateSquaredError(prediction, truth, outputCount)
+    local sumError = 0
+    for i = 1, outputCount do -- only test first three outputs
+        local diff = truth[i] - prediction[i]
+        sumError = sumError + (diff * diff)
+    end
+
+    return sumError / outputCount
+end
+
+-- Custom metric, check if the action holds highest probability is the same as ground truth 
+function helper.calcuateActionCorrectness(prediction, truth, actionCount)
+    -- action index of truth, 0 = dash, 1 = attack, 2 = special attack
+    local p = 0
+    local pm = 0 -- max of p
+    local t = 0
+    local tm = 0 -- max of t
+    for i = 1, actionCount do -- only test first three outputs
+        if prediction[i] > pm then
+            p = i
+            pm = prediction[i]
+        end
+
+        if truth[i] > tm then
+            t = i
+            tm = truth[i]
+        end
+    end
+
+    if p == t then
+        return 1
+    end
+
+    return 0
 end
 
 -- Shuffle the dataset
@@ -27,7 +55,7 @@ function helper.shuffleDataset(dataset)
     end
 end
 
-function helper.splitDatasetToK(dataset, k)
+function helper.splitDatasetToKFolds(dataset, k)
     local n = #dataset
     local partSize = math.floor(n / k)
     local remainder = n % k

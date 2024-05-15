@@ -2,39 +2,68 @@ local luann = require("luann")
 math.randomseed(89890)
 local helper = require("helper")
 
-local learningRate = 5 -- set between 1, 100
-local attempts = 10 -- number of times to do backpropagation
+local learningRate = 50 -- set between 1, 100
+local epoch = 10 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
---create a network with 6 inputs, 6 hidden cells, and 4 output
-myNetwork = luann:new({6, 6, 6, 4}, learningRate, threshold)
+local k = 5
+local dataset = helper.loadDatasetFromFile("DZrecord.log")
+local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
-local trainingData = helper.loadDatasetFromFile("DZrecord.log")
-local testingData = helper.loadDatasetFromFile("DZtest.log")
-
-helper.shuffleDataset(trainingData)
-
-local x = os.clock()
+-- helper.shuffleDataset(trainingData)
 
 --run backpropagation (bp)
-for i = 1,attempts do
-    for j = 1, #trainingData do
-        myNetwork:bp(trainingData[j][1], trainingData[j][2])    
+local globalErrorSum = 0
+local globalActionCorrectnessSum = 0
+local globalChargeTimeErrorSum = 0
+for testIdx = 1, k do -- do k times
+    local network = luann:new({6, 6, 6, 4}, learningRate, threshold)
+
+    local start = os.clock()
+    for _ = 1, epoch do
+        for i = 1, k do -- run through all folds
+            if testIdx ~= i then -- if the index is not the test set
+                for j = 1, #folds[i] do
+                    network:bp(folds[i][j][1], folds[i][j][2]) 
+                end
+            end
+        end
     end
-end
 
-print(string.format("training time: %.2f\n", os.clock() - x))
+    local time = os.clock() - start
 
-local predicted = {}
-local actual = {}
-for i = 1, #testingData do
-    myNetwork:activate(testingData[i][1])
-    local output = {
-        myNetwork[4].cells[1].signal, myNetwork[4].cells[2].signal, 
-        myNetwork[4].cells[3].signal, myNetwork[4].cells[4].signal}
-    table.insert(predicted, output)
-    table.insert(actual, testingData[i][2])
-end
+    -- validate model using i-th fold, which is the training set
+    local testset = folds[testIdx] 
+    local localErrorSum = 0
+    local localActionCorrectnessSum = 0
+    local localChargeTimeErrorSum = 0
+    for i = 1, #testset do
+        network:activate(testset[i][1]) 
+        local prediction = {
+            network[4].cells[1].signal, network[4].cells[2].signal, 
+            network[4].cells[3].signal, network[4].cells[4].signal
+        }
+        localErrorSum = localErrorSum + helper.calculateSquaredError(prediction, testset[i][2], 3)
+        localActionCorrectnessSum = localActionCorrectnessSum + helper.calcuateActionCorrectness(prediction, testset[i][2], 3)
+        localChargeTimeErrorSum = localChargeTimeErrorSum 
+            + helper.calculateSquaredError({ prediction[4] }, { testset[i][2][4] }, 1) -- 4th element is charge time
+    end
 
-local mae = helper.meanAbsoluteError(predicted, actual)
-print(mae)
+    local localError = localErrorSum / #testset
+    local localActionCorrectness = localActionCorrectnessSum / #testset
+    local localChargeTimeError = localChargeTimeErrorSum / #testset
+
+    print(string.format("%dth iteration - training time: %.2f, action correctness: %.3f(%d/%d), charge time error: %.3f", 
+        testIdx, time, localActionCorrectness, localActionCorrectnessSum, #testset, localChargeTimeError))
+
+    globalErrorSum = globalErrorSum + localError
+    globalActionCorrectnessSum = globalActionCorrectnessSum + localActionCorrectness
+    globalChargeTimeErrorSum = globalChargeTimeErrorSum + localChargeTimeError
+end 
+
+local error = globalErrorSum / k
+local actionCorrectness = globalActionCorrectnessSum / k
+local chargeTimeError = globalChargeTimeErrorSum / k 
+
+print(string.format("Cross-validation result - MSE: %.3f, action correctness: %.3f, charge time error: %.3f", 
+    error, actionCorrectness, chargeTimeError))
