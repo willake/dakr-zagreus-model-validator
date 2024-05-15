@@ -1,66 +1,86 @@
 local luann = require("luann")
-local helper = require("helper")
 math.randomseed(89890)
+local helper = require("helper")
 
-local learningRate = 5 -- set between 1, 100
-local attempts = 10 -- number of times to do backpropagation
+local learningRate = 1 -- set between 1, 100
+local epoch = 5 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
---create a network with 2 inputs, 3 hidden cells, and 1 output
--- myNetwork = luann:new({6, 6, 6, 4}, learningRate, threshold)
-local myNetwork = luann:new({10, 10, 10, 4}, learningRate, threshold)
+local k = 5
+local dataset = helper.loadDatasetFromFile("DZrecord.log")
 
-local trainingData = helper.loadDatasetFromFile("DZrecord.log")
-local testingData = helper.loadDatasetFromFile("DZtest.log")
-
--- make new training data
-for i = 3, #trainingData do
-    local prev2 = trainingData[i - 2][2]
+-- make new training data which attach second-last action to the current state
+for i = 3, #dataset do
+    local prev2 = dataset[i - 2][2]
 
     for j = 1, 4 do
-        table.insert(trainingData[i][1], prev2[j])
+        table.insert(dataset[i][1], prev2[j])
     end
 
-    print(table.concat(trainingData[i][1], ", "))
-
-    -- print(#trainingData[i][1])
+    -- print(table.concat(dataset[i][1], ", "))
 end
 
 -- remove the first two since they don't have second-previous data
-table.remove(trainingData, 1)
-table.remove(trainingData, 1)
+table.remove(dataset, 1)
+table.remove(dataset, 1)
 
--- helper.shuffleDataset(trainingData)
+local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
-for i = 3, #testingData do
-    local prev2 = testingData[i - 2][2]
-
-    for j = 1, 4 do
-        table.insert(testingData[i][1], prev2[j])
-    end
-end
-
-local x = os.clock()
+helper.shuffleDataset(dataset)
 
 --run backpropagation (bp)
-for i = 1, attempts do
-    for j = 1, #trainingData do
-        myNetwork:bp(trainingData[j][1], trainingData[j][2])    
+local globalErrorSum = 0 -- MSE of actions probability
+local globalActionCorrectnessSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
+local globalChargeTimeErrorSum = 0 -- MSE of charge time
+for testIdx = 1, k do -- do k times
+    local network = luann:new({10, 10, 10, 4}, learningRate, threshold)
+
+    local start = os.clock()
+    for _ = 1, epoch do
+        for i = 1, k do -- run through all folds
+            if testIdx ~= i then -- if the index is not the test set, train model
+                for j = 1, #folds[i] do
+                    network:bp(folds[i][j][1], folds[i][j][2]) 
+                end
+            end
+        end
     end
-end
 
-print(string.format("training time: %.2f\n", os.clock() - x))
+    local time = os.clock() - start
 
-local predicted = {}
-local actual = {}
-for i = 1, #testingData do
-    myNetwork:activate(testingData[i][1])
-    local output = {
-        myNetwork[4].cells[1].signal, myNetwork[4].cells[2].signal, 
-        myNetwork[4].cells[3].signal, myNetwork[4].cells[4].signal}
-    table.insert(predicted, output)
-    table.insert(actual, testingData[i][2])
-end
+    -- validate model using i-th fold, which is the training set
+    local testset = folds[testIdx] 
+    local localErrorSum = 0
+    local localActionCorrectnessSum = 0
+    local localChargeTimeErrorSum = 0
 
-local mae = helper.meanAbsoluteError(predicted, actual)
-print(mae)
+    for i = 1, #testset do
+        network:activate(testset[i][1]) 
+        local prediction = {
+            network[4].cells[1].signal, network[4].cells[2].signal, 
+            network[4].cells[3].signal, network[4].cells[4].signal
+        }
+        localErrorSum = localErrorSum + helper.calculateSquaredError(prediction, testset[i][2], 3)
+        localActionCorrectnessSum = localActionCorrectnessSum + helper.calcuateActionCorrectness(prediction, testset[i][2], 3)
+        localChargeTimeErrorSum = localChargeTimeErrorSum 
+            + helper.calculateSquaredError({ prediction[4] }, { testset[i][2][4] }, 1) -- 4th element is charge time
+    end
+
+    local localError = localErrorSum / #testset
+    local localActionCorrectness = localActionCorrectnessSum / #testset
+    local localChargeTimeError = localChargeTimeErrorSum / #testset
+
+    print(string.format("%dth iteration - training time: %.2f, action correctness: %.2f(%d/%d), charge time error: %.3f", 
+        testIdx, time, localActionCorrectness, localActionCorrectnessSum, #testset, localChargeTimeError))
+
+    globalErrorSum = globalErrorSum + localError
+    globalActionCorrectnessSum = globalActionCorrectnessSum + localActionCorrectness
+    globalChargeTimeErrorSum = globalChargeTimeErrorSum + localChargeTimeError
+end 
+
+local error = globalErrorSum / k
+local actionCorrectness = globalActionCorrectnessSum / k
+local chargeTimeError = globalChargeTimeErrorSum / k 
+
+print(string.format("Cross-validation result - MSE: %.3f, action correctness: %.2f, charge time error: %.3f", 
+    error, actionCorrectness, chargeTimeError))
