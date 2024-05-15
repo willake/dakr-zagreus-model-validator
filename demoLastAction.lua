@@ -2,20 +2,20 @@ local luann = require("luann")
 math.randomseed(89890)
 local helper = require("helper")
 
-local learningRate = 50 -- set between 1, 100
-local epoch = 10 -- number of times to do backpropagation
+local learningRate = 1 -- set between 1, 100
+local epoch = 5 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
 local k = 5
 local dataset = helper.loadDatasetFromFile("DZrecord.log")
 local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
--- helper.shuffleDataset(trainingData)
+helper.shuffleDataset(dataset)
 
 --run backpropagation (bp)
-local globalErrorSum = 0
-local globalActionCorrectnessSum = 0
-local globalChargeTimeErrorSum = 0
+local globalErrorSum = 0 -- MSE of actions probability
+local globalActionCorrectnessSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
+local globalChargeTimeErrorSum = 0 -- MSE of charge time
 for testIdx = 1, k do -- do k times
     local network = luann:new({6, 6, 6, 4}, learningRate, threshold)
 
@@ -37,6 +37,7 @@ for testIdx = 1, k do -- do k times
     local localErrorSum = 0
     local localActionCorrectnessSum = 0
     local localChargeTimeErrorSum = 0
+    
     for i = 1, #testset do
         network:activate(testset[i][1]) 
         local prediction = {
@@ -53,7 +54,7 @@ for testIdx = 1, k do -- do k times
     local localActionCorrectness = localActionCorrectnessSum / #testset
     local localChargeTimeError = localChargeTimeErrorSum / #testset
 
-    print(string.format("%dth iteration - training time: %.2f, action correctness: %.3f(%d/%d), charge time error: %.3f", 
+    print(string.format("%dth iteration - training time: %.2f, action correctness: %.2f(%d/%d), charge time error: %.3f", 
         testIdx, time, localActionCorrectness, localActionCorrectnessSum, #testset, localChargeTimeError))
 
     globalErrorSum = globalErrorSum + localError
@@ -65,5 +66,5 @@ local error = globalErrorSum / k
 local actionCorrectness = globalActionCorrectnessSum / k
 local chargeTimeError = globalChargeTimeErrorSum / k 
 
-print(string.format("Cross-validation result - MSE: %.3f, action correctness: %.3f, charge time error: %.3f", 
+print(string.format("Cross-validation result - MSE: %.3f, action correctness: %.2f, charge time error: %.3f", 
     error, actionCorrectness, chargeTimeError))
