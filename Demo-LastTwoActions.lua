@@ -10,8 +10,8 @@ local threshold = 1 -- steepness of the sigmoid curve
 -- myNetwork = luann:new({6, 6, 6, 4}, learningRate, threshold)
 local myNetwork = luann:new({10, 10, 10, 4}, learningRate, threshold)
 
-local trainingData = luann:loadTrainingDataFromFile("DZrecord.log")
-local testingData = luann:loadTrainingDataFromFile("DZtest.log")
+local trainingData = helper.loadTrainingDataFromFile("DZrecord.log")
+local testingData = helper.loadTrainingDataFromFile("DZtest.log")
 
 -- make new training data
 for i = 3, #trainingData do
@@ -21,8 +21,16 @@ for i = 3, #trainingData do
         table.insert(trainingData[i][1], prev2[j])
     end
 
+    print(table.concat(trainingData[i][1], ", "))
+
     -- print(#trainingData[i][1])
 end
+
+-- remove the first two since they don't have second-previous data
+table.remove(trainingData, 1)
+table.remove(trainingData, 1)
+
+-- helper.shuffleDataset(trainingData)
 
 for i = 3, #testingData do
     local prev2 = testingData[i - 2][2]
@@ -35,8 +43,8 @@ end
 local x = os.clock()
 
 --run backpropagation (bp)
-for i = 1,attempts do
-    for j = 3, #trainingData do
+for i = 1, attempts do
+    for j = 1, #trainingData do
         myNetwork:bp(trainingData[j][1], trainingData[j][2])    
     end
 end

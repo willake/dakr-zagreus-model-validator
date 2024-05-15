@@ -9,14 +9,16 @@ local threshold = 1 -- steepness of the sigmoid curve
 --create a network with 6 inputs, 6 hidden cells, and 4 output
 myNetwork = luann:new({6, 6, 6, 4}, learningRate, threshold)
 
-local trainingData = luann:loadTrainingDataFromFile("DZrecord.log")
-local testingData = luann:loadTrainingDataFromFile("DZtest.log")
+local trainingData = helper.loadTrainingDataFromFile("DZrecord.log")
+local testingData = helper.loadTrainingDataFromFile("DZtest.log")
+
+helper.shuffleDataset(trainingData)
 
 local x = os.clock()
 
 --run backpropagation (bp)
 for i = 1,attempts do
-    for j = 2, #trainingData do
+    for j = 1, #trainingData do
         myNetwork:bp(trainingData[j][1], trainingData[j][2])    
     end
 end
