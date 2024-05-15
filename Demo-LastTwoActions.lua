@@ -1,23 +1,6 @@
 local luann = require("luann")
+local helper = require("helper")
 math.randomseed(89890)
-
--- Function to calculate Mean Absolute Error (MAE)
-local function meanAbsoluteError(predicted, actual)
-    local sumError = 0
-    local n = #predicted
-    local m = #predicted[1] -- num of outputs
-
-    for i = 1, n do
-        local outputError = 0
-        for j = 1, 3 do -- only test first three outputs
-            outputError = outputError + math.abs(predicted[i][j] - actual[i][j])
-        end
-        local mean = outputError / m
-        sumError = sumError + mean
-    end
-
-    return sumError / n
-end
 
 local learningRate = 5 -- set between 1, 100
 local attempts = 10 -- number of times to do backpropagation
@@ -71,5 +54,5 @@ for i = 1, #testingData do
     table.insert(actual, testingData[i][2])
 end
 
-local mae = meanAbsoluteError(predicted, actual)
+local mae = helper.meanAbsoluteError(predicted, actual)
 print(mae)
