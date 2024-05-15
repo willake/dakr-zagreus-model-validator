@@ -9,8 +9,8 @@ local threshold = 1 -- steepness of the sigmoid curve
 --create a network with 6 inputs, 6 hidden cells, and 4 output
 myNetwork = luann:new({6, 6, 6, 4}, learningRate, threshold)
 
-local trainingData = helper.loadTrainingDataFromFile("DZrecord.log")
-local testingData = helper.loadTrainingDataFromFile("DZtest.log")
+local trainingData = helper.loadDatasetFromFile("DZrecord.log")
+local testingData = helper.loadDatasetFromFile("DZtest.log")
 
 helper.shuffleDataset(trainingData)
 

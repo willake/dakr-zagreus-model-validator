@@ -10,8 +10,8 @@ local threshold = 1 -- steepness of the sigmoid curve
 -- myNetwork = luann:new({6, 6, 6, 4}, learningRate, threshold)
 local myNetwork = luann:new({10, 10, 10, 4}, learningRate, threshold)
 
-local trainingData = helper.loadTrainingDataFromFile("DZrecord.log")
-local testingData = helper.loadTrainingDataFromFile("DZtest.log")
+local trainingData = helper.loadDatasetFromFile("DZrecord.log")
+local testingData = helper.loadDatasetFromFile("DZtest.log")
 
 -- make new training data
 for i = 3, #trainingData do

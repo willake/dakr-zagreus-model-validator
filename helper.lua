@@ -27,7 +27,32 @@ function helper.shuffleDataset(dataset)
     end
 end
 
-function helper.loadTrainingDataFromFile(fileName)
+function helper.splitDatasetToK(dataset, k)
+    local n = #dataset
+    local partSize = math.floor(n / k)
+    local remainder = n % k
+    local startIndex = 1
+    local splited = {}
+
+    for i = 1, k do
+        local part = {}
+        local size = partSize
+        if i <= remainder then
+            size = size + 1
+        end
+
+        for j = 1, size do
+            table.insert(part, dataset[startIndex])
+            startIndex = startIndex + 1
+        end
+
+        table.insert(splited, part)
+    end
+
+    return splited
+end
+
+function helper.loadDatasetFromFile(fileName)
 	local trainingData = {}
 	local fileLines = {}
     local f = io.open(fileName, "rb")
