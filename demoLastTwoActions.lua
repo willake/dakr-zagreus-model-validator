@@ -82,5 +82,5 @@ local error = globalErrorSum / k
 local actionCorrectness = globalActionCorrectnessSum / k
 local chargeTimeError = globalChargeTimeErrorSum / k 
 
-print(string.format("Cross-validation result - MSE: %.3f, action correctness: %.2f, charge time error: %.3f", 
+print(string.format("Cross-validation result - action MSE: %.3f, action correctness: %.2f, charge time MSE: %.3f", 
     error, actionCorrectness, chargeTimeError))
