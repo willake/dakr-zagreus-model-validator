@@ -22,7 +22,7 @@ for testIdx = 1, k do -- do k times
     local start = os.clock()
     for _ = 1, epoch do
         for i = 1, k do -- run through all folds
-            if testIdx ~= i then -- if the index is not the test set
+            if testIdx ~= i then -- if the index is not the test set, train model
                 for j = 1, #folds[i] do
                     network:bp(folds[i][j][1], folds[i][j][2]) 
                 end
@@ -37,7 +37,7 @@ for testIdx = 1, k do -- do k times
     local localErrorSum = 0
     local localActionCorrectnessSum = 0
     local localChargeTimeErrorSum = 0
-    
+
     for i = 1, #testset do
         network:activate(testset[i][1]) 
         local prediction = {
