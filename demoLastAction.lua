@@ -2,15 +2,16 @@ local luann = require("luann")
 math.randomseed(89890)
 local helper = require("helper")
 
-local learningRate = 1 -- set between 1, 100
+local learningRate = 10 -- set between 1, 100
 local epoch = 5 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
 local k = 5
 local dataset = helper.loadDatasetFromFile("DZrecord.log")
-local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
 helper.shuffleDataset(dataset)
+
+local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
 --run backpropagation (bp)
 local globalErrorSum = 0 -- MSE of actions probability
