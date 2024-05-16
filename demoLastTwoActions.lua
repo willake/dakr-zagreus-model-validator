@@ -3,7 +3,7 @@ math.randomseed(89890)
 local helper = require("helper")
 
 local learningRate = 1 -- set between 1, 100
-local epoch = 5 -- number of times to do backpropagation
+local epoch = 1 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
 local k = 5
@@ -11,29 +11,32 @@ local dataset = helper.loadDatasetFromFile("DZrecord.log")
 
 -- make new training data which attach second-last action to the current state
 for i = 3, #dataset do
+    local prev = dataset[i - 1][2]
     local prev2 = dataset[i - 2][2]
+
+    for j = 1, 4 do
+        table.insert(dataset[i][1], prev[j])
+    end
 
     for j = 1, 4 do
         table.insert(dataset[i][1], prev2[j])
     end
-
-    -- print(table.concat(dataset[i][1], ", "))
 end
 
 -- remove the first two since they don't have second-previous data
 table.remove(dataset, 1)
 table.remove(dataset, 1)
 
-local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
+-- helper.shuffleDataset(dataset)
 
-helper.shuffleDataset(dataset)
+local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
 --run backpropagation (bp)
 local globalErrorSum = 0 -- MSE of actions probability
 local globalActionCorrectnessSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
 local globalChargeTimeErrorSum = 0 -- MSE of charge time
 for testIdx = 1, k do -- do k times
-    local network = luann:new({10, 10, 10, 4}, learningRate, threshold)
+    local network = luann:new({11, 11, 11, 4}, learningRate, threshold)
 
     local start = os.clock()
     for _ = 1, epoch do
