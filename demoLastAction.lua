@@ -57,6 +57,7 @@ for testIdx = 1, k do -- do k times
             network[4].cells[1].signal, network[4].cells[2].signal, 
             network[4].cells[3].signal, network[4].cells[4].signal
         }
+        print(table.concat(prediction, ", "))
         localErrorSum = localErrorSum + helper.calculateSquaredError(prediction, testset[i][2], 3)
         localActionCorrectnessSum = localActionCorrectnessSum + helper.calcuateActionCorrectness(prediction, testset[i][2], 3)
         localChargeTimeErrorSum = localChargeTimeErrorSum 

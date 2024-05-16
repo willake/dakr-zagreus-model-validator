@@ -2,8 +2,8 @@ local luann = require("luann")
 math.randomseed(89890)
 local helper = require("helper")
 
-local learningRate = 1 -- set between 1, 100
-local epoch = 1 -- number of times to do backpropagation
+local learningRate = 10 -- set between 1, 100
+local epoch = 5 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
 local k = 5
