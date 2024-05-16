@@ -27,7 +27,7 @@ end
 table.remove(dataset, 1)
 table.remove(dataset, 1)
 
--- helper.shuffleDataset(dataset)
+helper.shuffleDataset(dataset)
 
 local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
@@ -36,7 +36,7 @@ local globalErrorSum = 0 -- MSE of actions probability
 local globalActionCorrectnessSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
 local globalChargeTimeErrorSum = 0 -- MSE of charge time
 for testIdx = 1, k do -- do k times
-    local network = luann:new({11, 11, 11, 4}, learningRate, threshold)
+    local network = luann:new({11, 8, 8, 4}, learningRate, threshold)
 
     local start = os.clock()
     for _ = 1, epoch do

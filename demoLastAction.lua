@@ -18,7 +18,7 @@ for i = 2, #dataset do
     end
 end
 
--- remove the first two since they don't have second-previous data
+-- remove the first since it doesn't have second-previous data
 table.remove(dataset, 1)
 
 helper.shuffleDataset(dataset)
@@ -30,7 +30,7 @@ local globalErrorSum = 0 -- MSE of actions probability
 local globalActionCorrectnessSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
 local globalChargeTimeErrorSum = 0 -- MSE of charge time
 for testIdx = 1, k do -- do k times
-    local network = luann:new({7, 7, 7, 4}, learningRate, threshold)
+    local network = luann:new({7, 6, 6, 4}, learningRate, threshold)
 
     local start = os.clock()
     for _ = 1, epoch do
