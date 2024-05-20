@@ -2,7 +2,7 @@ local luann = require("luann")
 math.randomseed(89890)
 local helper = require("helper")
 
-local learningRate = 1 -- set between 1, 100
+local learningRate = 5 -- set between 1, 100
 local epoch = 1 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
@@ -25,10 +25,15 @@ helper.shuffleDataset(dataset)
 
 local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
---run backpropagation (bp)
-local globalErrorSum = 0 -- MSE of actions probability
-local globalActionCorrectnessSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
-local globalChargeTimeErrorSum = 0 -- MSE of charge time
+local gTrainingAESum = 0 -- MSE of actions probability
+local gTrainingACCSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
+local gTrainingATCSum = 0 -- MSE of charge time
+local gTrainingCTESum = 0
+
+local gTestingAESum = 0 -- MSE of actions probability
+local gTestingACCSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
+local gTestingATCSum = 0 -- MSE of charge time
+local gTestingCTESum = 0
 for testIdx = 1, k do -- do k times
     local network = luann:new({7, 6, 6, 4}, learningRate, threshold)
 
@@ -45,40 +50,52 @@ for testIdx = 1, k do -- do k times
 
     local time = os.clock() - start
 
-    -- validate model using i-th fold, which is the training set
-    local testset = folds[testIdx] 
-    local localErrorSum = 0
-    local localActionCorrectnessSum = 0
-    local localChargeTimeErrorSum = 0
-
-    for i = 1, #testset do
-        network:activate(testset[i][1]) 
-        local prediction = {
-            network[4].cells[1].signal, network[4].cells[2].signal, 
-            network[4].cells[3].signal, network[4].cells[4].signal
-        }
-        print(table.concat(prediction, ", "))
-        localErrorSum = localErrorSum + helper.calculateSquaredError(prediction, testset[i][2], 3)
-        localActionCorrectnessSum = localActionCorrectnessSum + helper.calcuateActionCorrectness(prediction, testset[i][2], 3)
-        localChargeTimeErrorSum = localChargeTimeErrorSum 
-            + helper.calculateSquaredError({ prediction[4] }, { testset[i][2][4] }, 1) -- 4th element is charge time
+    -- AE = Action error, ACC = Action correct count, ATC = Action total count, CTE = Charge time error
+    -- get training error
+    -- validate model using folds other than i-th fold, which is the training set
+    local trainingAESum = 0
+    local trainingACCSum = 0
+    local trainingATCSum = 0
+    local trainingCTESum = 0
+    for idx = 1, k do
+        if idx ~= testIdx then
+            local localErrors = helper.calculateErrorOfFold(network, folds[idx])
+            trainingAESum = trainingAESum + localErrors[1]
+            trainingACCSum = trainingACCSum + localErrors[2]
+            trainingATCSum = trainingATCSum + localErrors[3]
+            trainingCTESum = trainingCTESum + localErrors[4]
+        end
     end
 
-    local localError = localErrorSum / #testset
-    local localActionCorrectness = localActionCorrectnessSum / #testset
-    local localChargeTimeError = localChargeTimeErrorSum / #testset
+    local trainingAE = trainingAESum / (k - 1)
+    local trainingCTE = trainingCTESum / (k - 1)
 
-    print(string.format("%dth iteration - training time: %.2f, action correctness: %.2f(%d/%d), charge time error: %.3f", 
-        testIdx, time, localActionCorrectness, localActionCorrectnessSum, #testset, localChargeTimeError))
+    -- get testing error
+    -- validate model using i-th fold, which is the testing set
+    local testingErrors = helper.calculateErrorOfFold(network, folds[testIdx])
+    local testingAE = testingErrors[1]
+    local testingACC = testingErrors[2]
+    local testingATC = testingErrors[3]
+    local testingCTE = testingErrors[4]
 
-    globalErrorSum = globalErrorSum + localError
-    globalActionCorrectnessSum = globalActionCorrectnessSum + localActionCorrectness
-    globalChargeTimeErrorSum = globalChargeTimeErrorSum + localChargeTimeError
+    print(string.format("%dth iteration - training time: %.2f", 
+        testIdx, time))
+    print(string.format("training action correctness: %.2f(%d/%d), training charge time error: %.3f", 
+        trainingACCSum / trainingATCSum, trainingACCSum, trainingATCSum, trainingCTE))
+    print(string.format("testing action correctness: %.2f(%d/%d), testing charge time error: %.3f", 
+        testingACC / testingATC, testingACC, testingATC, testingCTE))
+
+    gTrainingACCSum = gTrainingACCSum + trainingACCSum
+    gTrainingATCSum = gTrainingATCSum + trainingATCSum
+    gTrainingCTESum = gTrainingCTESum + trainingCTE  
+
+    gTestingACCSum = gTestingACCSum + testingACC
+    gTestingATCSum = gTestingATCSum + testingATC
+    gTestingCTESum = gTestingCTESum + testingCTE
 end 
 
-local error = globalErrorSum / k
-local actionCorrectness = globalActionCorrectnessSum / k
-local chargeTimeError = globalChargeTimeErrorSum / k 
-
-print(string.format("Cross-validation result - action MSE: %.3f, action correctness: %.2f, charge time MSE: %.3f", 
-    error, actionCorrectness, chargeTimeError))
+print("Cross-validation result -")
+print(string.format("training action correctness: %.2f, training charge time MSE: %.3f", 
+    gTrainingACCSum / gTrainingATCSum, gTrainingCTESum / k))
+print(string.format("testing action correctness: %.2f, testing charge time MSE: %.3f", 
+    gTestingACCSum / gTestingATCSum, gTestingCTESum / k))
