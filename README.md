@@ -3,6 +3,10 @@ This respository contains the scripts for evaluating and testing the model train
 
 The script uses k-fold validation for benchmarking the model.
 
+### Export your data from Dark Zagreus
+WIP
 ### Metrics
 #### Action correctness
+WIP
 #### MSE Charge time
+WIP
