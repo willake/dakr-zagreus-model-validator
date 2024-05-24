@@ -89,8 +89,8 @@ function helper.loadDatasetFromFile(fileName)
 		 end
 	f:close()
 
-	for i = 3, #fileLines do
-		if i%2 == 1 then
+	for i = 4, #fileLines do
+		if i%2 == 0 then
 			local tempInputs = {}
 			for input in fileLines[i]:gmatch("%S+") do table.insert(tempInputs, tonumber(input)) end
 			local tempOutputs = {}
