@@ -21,7 +21,7 @@ end
 
 -- Custom metric, check if the action holds highest probability is the same as ground truth 
 function helper.calcuateActionCorrectness(prediction, truth, actionCount)
-    -- action index of truth, 0 = dash, 1 = attack, 2 = special attack
+    -- action index of truth, 0 = dash toward, 1 = attack, 2 = special attack, 3 = dash away
     local p = 0
     local pm = 0 -- max of p
     local t = 0
@@ -37,6 +37,8 @@ function helper.calcuateActionCorrectness(prediction, truth, actionCount)
             tm = truth[i]
         end
     end
+
+    -- print(string.format("p: %d, t: %d", p ,t))
 
     if p == t then
         return 1
@@ -110,19 +112,42 @@ function helper.calculateErrorOfFold(network, fold)
         network:activate(fold[i][1]) 
         local prediction = {
             network[4].cells[1].signal, network[4].cells[2].signal, 
-            network[4].cells[3].signal, network[4].cells[4].signal
+            network[4].cells[3].signal, network[4].cells[4].signal, network[4].cells[5].signal
         }
-        -- print(table.concat(prediction, ", "))
-        actionErrorSum = actionErrorSum + helper.calculateSquaredError(prediction, fold[i][2], 3)
-        actionCorrectnessSum = actionCorrectnessSum + helper.calcuateActionCorrectness(prediction, fold[i][2], 3)
+        print(table.concat(prediction, ", "))
+        actionErrorSum = actionErrorSum + helper.calculateSquaredError(prediction, fold[i][2], 4)
+        actionCorrectnessSum = actionCorrectnessSum + helper.calcuateActionCorrectness(prediction, fold[i][2], 4)
         chargeTimeErrorSum = chargeTimeErrorSum 
-            + helper.calculateSquaredError({ prediction[4] }, { fold[i][2][4] }, 1) -- 4th element is charge time
+            + helper.calculateSquaredError({ prediction[5] }, { fold[i][2][5] }, 1) -- 4th element is charge time
     end
 
     local actionError = actionErrorSum / #fold
     local chargeTimeError = chargeTimeErrorSum / #fold
 
     return {actionError, actionCorrectnessSum, #fold, chargeTimeError}
+end
+
+function helper.countActions(dataset)
+    local template = dataset[1][2]
+    local counts = {}
+    for i = 1, #template do
+        table.insert(counts, 0)
+    end
+
+    for i = 1, #dataset do
+        local action = dataset[i][2]
+        local b = 1 -- biggest
+        local bp = 0.0
+        for j = 1, #action do
+            if bp < action[j] then
+                b = j
+                bp = action[j]
+            end
+        end
+        counts[b] = counts[b] + 1 
+    end
+
+    return counts
 end
 
 

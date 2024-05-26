@@ -42,7 +42,7 @@ local gTestingACCSum = 0 -- Whether the predicted action holds highest probabili
 local gTestingATCSum = 0 -- MSE of charge time
 local gTestingCTESum = 0
 for testIdx = 1, k do -- do k times
-    local network = luann:new({11, 9, 9, 4}, learningRate, threshold)
+    local network = luann:new({13, 9, 9, 5}, learningRate, threshold)
 
     local start = os.clock()
     for _ = 1, epoch do
