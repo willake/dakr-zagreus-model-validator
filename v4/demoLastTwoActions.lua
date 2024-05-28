@@ -1,9 +1,11 @@
+package.path = package.path .. ';../?.lua;../?.lua;../?.lua;target/?.lua'
+
 local luann = require("luann")
 math.randomseed(89890)
 local helper = require("helper")
 
-local learningRate = 5 -- set between 1, 100
-local epoch = 3 -- number of times to do backpropagation
+local learningRate = 3 -- set between 1, 100
+local epoch = 10 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
 local k = 5
@@ -42,7 +44,7 @@ local gTestingACCSum = 0 -- Whether the predicted action holds highest probabili
 local gTestingATCSum = 0 -- MSE of charge time
 local gTestingCTESum = 0
 for testIdx = 1, k do -- do k times
-    local network = luann:new({13, 9, 9, 5}, learningRate, threshold)
+    local network = luann:new({15, 10, 10, 5}, learningRate, threshold)
 
     local start = os.clock()
     for _ = 1, epoch do

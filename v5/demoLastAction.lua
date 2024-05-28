@@ -1,9 +1,11 @@
+package.path = package.path .. ';../?.lua;../?.lua;../?.lua;target/?.lua'
+
 local luann = require("luann")
 math.randomseed(89890)
 local helper = require("helper")
 
-local learningRate = 1 -- set between 1, 100
-local epoch = 1 -- number of times to do backpropagation
+local learningRate = 3 -- set between 1, 100
+local epoch = 10 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
 local k = 5
@@ -23,6 +25,10 @@ table.remove(dataset, 1)
 
 helper.shuffleDataset(dataset)
 
+local counts = helper.countActions(dataset)
+
+print(table.concat(counts, ", "))
+
 local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
 local gTrainingAESum = 0 -- MSE of actions probability
@@ -35,7 +41,7 @@ local gTestingACCSum = 0 -- Whether the predicted action holds highest probabili
 local gTestingATCSum = 0 -- MSE of charge time
 local gTestingCTESum = 0
 for testIdx = 1, k do -- do k times
-    local network = luann:new({8, 8, 8, 5}, learningRate, threshold)
+    local network = luann:new({11, 8, 8, 5}, learningRate, threshold)
 
     local start = os.clock()
     for _ = 1, epoch do
@@ -56,23 +62,20 @@ for testIdx = 1, k do -- do k times
     local trainingAESum = 0
     local trainingACCSum = 0
     local trainingATCSum = 0
-    local trainingCTESum = 0
     for idx = 1, k do
         if idx ~= testIdx then
             local localErrors = helper.calculateErrorOfFold(network, folds[idx])
             trainingAESum = trainingAESum + localErrors[1]
             trainingACCSum = trainingACCSum + localErrors[2]
             trainingATCSum = trainingATCSum + localErrors[3]
-            trainingCTESum = trainingCTESum + localErrors[4]
         end
     end
 
     local trainingAE = trainingAESum / (k - 1)
-    local trainingCTE = trainingCTESum / (k - 1)
 
     -- get testing error
     -- validate model using i-th fold, which is the testing set
-    local testingErrors = helper.calculateErrorOfFold(network, folds[testIdx])
+    local testingErrors = helper.calculateErrorOfFoldV5(network, folds[testIdx])
     local testingAE = testingErrors[1]
     local testingACC = testingErrors[2]
     local testingATC = testingErrors[3]
@@ -80,22 +83,20 @@ for testIdx = 1, k do -- do k times
 
     print(string.format("%dth iteration - training time: %.2f", 
         testIdx, time))
-    print(string.format("training action correctness: %.2f(%d/%d), training charge time error: %.3f", 
-        trainingACCSum / trainingATCSum, trainingACCSum, trainingATCSum, trainingCTE))
-    print(string.format("testing action correctness: %.2f(%d/%d), testing charge time error: %.3f", 
+    print(string.format("training action correctness: %.2f(%d/%d)",
+        trainingACCSum / trainingATCSum, trainingACCSum, trainingATCSum))
+    print(string.format("testing action correctness: %.2f(%d/%d)", 
         testingACC / testingATC, testingACC, testingATC, testingCTE))
 
     gTrainingACCSum = gTrainingACCSum + trainingACCSum
     gTrainingATCSum = gTrainingATCSum + trainingATCSum
-    gTrainingCTESum = gTrainingCTESum + trainingCTE  
 
     gTestingACCSum = gTestingACCSum + testingACC
     gTestingATCSum = gTestingATCSum + testingATC
-    gTestingCTESum = gTestingCTESum + testingCTE
 end 
 
 print("Cross-validation result -")
-print(string.format("training action correctness: %.2f, training charge time MSE: %.3f", 
-    gTrainingACCSum / gTrainingATCSum, gTrainingCTESum / k))
-print(string.format("testing action correctness: %.2f, testing charge time MSE: %.3f", 
-    gTestingACCSum / gTestingATCSum, gTestingCTESum / k))
+print(string.format("training action correctness: %.2f", 
+    gTrainingACCSum / gTrainingATCSum))
+print(string.format("testing action correctness: %.2f", 
+    gTestingACCSum / gTestingATCSum))
