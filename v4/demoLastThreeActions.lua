@@ -1,9 +1,11 @@
+package.path = package.path .. ';../?.lua;../?.lua;../?.lua;target/?.lua'
+
 local luann = require("luann")
 math.randomseed(89890)
 local helper = require("helper")
 
-local learningRate = 5 -- set between 1, 100
-local epoch = 3 -- number of times to do backpropagation
+local learningRate = 3 -- set between 1, 100
+local epoch = 25 -- number of times to do backpropagation
 local threshold = 1 -- steepness of the sigmoid curve
 
 local k = 5
@@ -12,9 +14,10 @@ local dataset = helper.loadDatasetFromFile("DZrecord.log")
 print(string.format("Data count: %d", #dataset))
 
 -- make new training data which attach second-last action to the current state
-for i = 4, #dataset do
+for i = 5, #dataset do
     local prev = dataset[i - 1][2]
     local prev2 = dataset[i - 2][2]
+    local prev3 = dataset[i - 3][2]
 
     for j = 1, 4 do
         table.insert(dataset[i][1], prev[j])
@@ -22,6 +25,10 @@ for i = 4, #dataset do
 
     for j = 1, 4 do
         table.insert(dataset[i][1], prev2[j])
+    end
+
+    for j = 1, 4 do
+        table.insert(dataset[i][1], prev3[j])
     end
 end
 
@@ -42,7 +49,7 @@ local gTestingACCSum = 0 -- Whether the predicted action holds highest probabili
 local gTestingATCSum = 0 -- MSE of charge time
 local gTestingCTESum = 0
 for testIdx = 1, k do -- do k times
-    local network = luann:new({11, 9, 9, 4}, learningRate, threshold)
+    local network = luann:new({20, 13, 13, 5}, learningRate, threshold)
 
     local start = os.clock()
     for _ = 1, epoch do

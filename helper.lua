@@ -21,22 +21,9 @@ end
 
 -- Custom metric, check if the action holds highest probability is the same as ground truth 
 function helper.calcuateActionCorrectness(prediction, truth, actionCount)
-    -- action index of truth, 0 = dash, 1 = attack, 2 = special attack
-    local p = 0
-    local pm = 0 -- max of p
-    local t = 0
-    local tm = 0 -- max of t
-    for i = 1, actionCount do -- only test first three outputs
-        if prediction[i] > pm then
-            p = i
-            pm = prediction[i]
-        end
-
-        if truth[i] > tm then
-            t = i
-            tm = truth[i]
-        end
-    end
+    -- action index of truth, 0 = dash toward, 1 = attack, 2 = special attack, 3 = dash away
+    local p = helper.getHighestAction(prediction)
+    local t = helper.getHighestAction(truth)
 
     if p == t then
         return 1
@@ -101,29 +88,128 @@ function helper.loadDatasetFromFile(fileName)
 	return(trainingData)
 end
 
-function helper.calculateErrorOfFold(network, fold)
-    local actionErrorSum = 0
+function helper.calculateErrorOfFoldV4(network, fold)
+    local predActionCounts = {0, 0, 0, 0, 0, 0}
+    local truthActionCounts = {0, 0, 0, 0, 0, 0}
     local actionCorrectnessSum = 0
-    local chargeTimeErrorSum = 0
+    local chargeTimeSum = 0
 
     for i = 1, #fold do
         network:activate(fold[i][1]) 
         local prediction = {
             network[4].cells[1].signal, network[4].cells[2].signal, 
-            network[4].cells[3].signal, network[4].cells[4].signal
+            network[4].cells[3].signal, network[4].cells[4].signal, network[4].cells[5].signal
         }
-        -- print(table.concat(prediction, ", "))
-        actionErrorSum = actionErrorSum + helper.calculateSquaredError(prediction, fold[i][2], 3)
-        actionCorrectnessSum = actionCorrectnessSum + helper.calcuateActionCorrectness(prediction, fold[i][2], 3)
-        chargeTimeErrorSum = chargeTimeErrorSum 
-            + helper.calculateSquaredError({ prediction[4] }, { fold[i][2][4] }, 1) -- 4th element is charge time
+        print(table.concat(prediction, ", "))
+        local p = helper.getHighestAction(prediction)
+        local t = helper.getHighestAction(fold[i][2])
+        predActionCounts[p] = predActionCounts[p] + 1
+        truthActionCounts[t] = truthActionCounts[t] + 1
+        actionCorrectnessSum = actionCorrectnessSum + helper.calcuateActionCorrectness(prediction, fold[i][2], 4)
+        chargeTimeSum = chargeTimeSum + helper.calculateSquaredError({ prediction[5] }, { fold[i][2][5] }, 1) 
     end
 
-    local actionError = actionErrorSum / #fold
-    local chargeTimeError = chargeTimeErrorSum / #fold
+    local chargeTimeError = chargeTimeSum / #fold
 
-    return {actionError, actionCorrectnessSum, #fold, chargeTimeError}
+    return {
+        actionCorrectness = actionCorrectnessSum,
+        actionNum = #fold, 
+        predActionCounts = predActionCounts, 
+        truthActionCounts = truthActionCounts,
+        chargeTimeError = chargeTimeError
+    }
 end
 
+
+function helper.calculateErrorOfFoldV5(network, fold)
+    local predActionCounts = {0, 0, 0, 0, 0, 0}
+    local truthActionCounts = {0, 0, 0, 0, 0, 0}
+    local actionCorrectnessSum = 0
+
+    for i = 1, #fold do
+        network:activate(fold[i][1]) 
+        local prediction = {
+            network[4].cells[1].signal, network[4].cells[2].signal, 
+            network[4].cells[3].signal, network[4].cells[4].signal, network[4].cells[5].signal
+        }
+        print(table.concat(prediction, ", "))
+        local p = helper.getHighestAction(prediction)
+        local t = helper.getHighestAction(fold[i][2])
+        predActionCounts[p] = predActionCounts[p] + 1
+        truthActionCounts[t] = truthActionCounts[t] + 1
+        actionCorrectnessSum = actionCorrectnessSum + helper.calcuateActionCorrectness(prediction, fold[i][2], 5)
+    end
+
+    return {
+        actionCorrectness = actionCorrectnessSum,
+        actionNum = #fold, 
+        predActionCounts = predActionCounts, 
+        truthActionCounts = truthActionCounts,
+    }
+end
+
+function helper.calculateErrorOfFoldV6(network, fold)
+    local predActionCounts = {0, 0, 0, 0, 0, 0}
+    local truthActionCounts = {0, 0, 0, 0, 0, 0}
+    local actionCorrectnessSum = 0
+
+    for i = 1, #fold do
+        network:activate(fold[i][1]) 
+        local prediction = {
+            network[4].cells[1].signal, network[4].cells[2].signal, 
+            network[4].cells[3].signal, network[4].cells[4].signal, network[4].cells[5].signal, network[4].cells[6].signal
+        }
+        print(table.concat(prediction, ", "))
+        local p = helper.getHighestAction(prediction)
+        local t = helper.getHighestAction(fold[i][2])
+        predActionCounts[p] = predActionCounts[p] + 1
+        truthActionCounts[t] = truthActionCounts[t] + 1
+        actionCorrectnessSum = actionCorrectnessSum + helper.calcuateActionCorrectness(prediction, fold[i][2], 6)
+    end
+
+    return {
+        actionCorrectness = actionCorrectnessSum,
+        actionNum = #fold, 
+        predActionCounts = predActionCounts, 
+        truthActionCounts = truthActionCounts,
+    }
+end
+
+-- Count the amounth of each actions within the dataset
+function helper.countActions(dataset)
+    local template = dataset[1][2]
+    local counts = {}
+    for i = 1, #template do
+        table.insert(counts, 0)
+    end
+
+    for i = 1, #dataset do
+        local action = dataset[i][2]
+        local b = 1 -- biggest
+        local bp = 0.0
+        for j = 1, #action do
+            if bp < action[j] then
+                b = j
+                bp = action[j]
+            end
+        end
+        counts[b] = counts[b] + 1 
+    end
+
+    return counts
+end
+
+-- Get highest action index within a list of action probability
+function helper.getHighestAction(actionProbs)
+    local p = 1
+    local pm = 0 -- prob max
+    for i = 1, #actionProbs do
+        if actionProbs[i] > pm then
+            p = i
+            pm = actionProbs[i]
+        end
+    end
+    return p
+end
 
 return helper
