@@ -88,10 +88,11 @@ function helper.loadDatasetFromFile(fileName)
 	return(trainingData)
 end
 
-function helper.calculateErrorOfFold(network, fold)
-    local actionErrorSum = 0
+function helper.calculateErrorOfFoldV4(network, fold)
+    local predActionCounts = {0, 0, 0, 0, 0, 0}
+    local truthActionCounts = {0, 0, 0, 0, 0, 0}
     local actionCorrectnessSum = 0
-    local chargeTimeErrorSum = 0
+    local chargeTimeSum = 0
 
     for i = 1, #fold do
         network:activate(fold[i][1]) 
@@ -99,23 +100,31 @@ function helper.calculateErrorOfFold(network, fold)
             network[4].cells[1].signal, network[4].cells[2].signal, 
             network[4].cells[3].signal, network[4].cells[4].signal, network[4].cells[5].signal
         }
-        -- print(table.concat(prediction, ", "))
-        actionErrorSum = actionErrorSum + helper.calculateSquaredError(prediction, fold[i][2], 4)
+        print(table.concat(prediction, ", "))
+        local p = helper.getHighestAction(prediction)
+        local t = helper.getHighestAction(fold[i][2])
+        predActionCounts[p] = predActionCounts[p] + 1
+        truthActionCounts[t] = truthActionCounts[t] + 1
         actionCorrectnessSum = actionCorrectnessSum + helper.calcuateActionCorrectness(prediction, fold[i][2], 4)
-        chargeTimeErrorSum = chargeTimeErrorSum 
-            + helper.calculateSquaredError({ prediction[5] }, { fold[i][2][5] }, 1) -- 4th element is charge time
+        chargeTimeSum = chargeTimeSum + helper.calculateSquaredError({ prediction[5] }, { fold[i][2][5] }, 1) 
     end
 
-    local actionError = actionErrorSum / #fold
-    local chargeTimeError = chargeTimeErrorSum / #fold
+    local chargeTimeError = chargeTimeSum / #fold
 
-    return {actionError, actionCorrectnessSum, #fold, chargeTimeError}
+    return {
+        actionCorrectness = actionCorrectnessSum,
+        actionNum = #fold, 
+        predActionCounts = predActionCounts, 
+        truthActionCounts = truthActionCounts,
+        chargeTimeError = chargeTimeError
+    }
 end
 
+
 function helper.calculateErrorOfFoldV5(network, fold)
-    local actionErrorSum = 0
+    local predActionCounts = {0, 0, 0, 0, 0, 0}
+    local truthActionCounts = {0, 0, 0, 0, 0, 0}
     local actionCorrectnessSum = 0
-    local chargeTimeErrorSum = 0
 
     for i = 1, #fold do
         network:activate(fold[i][1]) 
@@ -123,15 +132,20 @@ function helper.calculateErrorOfFoldV5(network, fold)
             network[4].cells[1].signal, network[4].cells[2].signal, 
             network[4].cells[3].signal, network[4].cells[4].signal, network[4].cells[5].signal
         }
-        -- print(table.concat(prediction, ", "))
-        actionErrorSum = actionErrorSum + helper.calculateSquaredError(prediction, fold[i][2], 5)
+        print(table.concat(prediction, ", "))
+        local p = helper.getHighestAction(prediction)
+        local t = helper.getHighestAction(fold[i][2])
+        predActionCounts[p] = predActionCounts[p] + 1
+        truthActionCounts[t] = truthActionCounts[t] + 1
         actionCorrectnessSum = actionCorrectnessSum + helper.calcuateActionCorrectness(prediction, fold[i][2], 5)
     end
 
-    local actionError = actionErrorSum / #fold
-    local chargeTimeError = chargeTimeErrorSum / #fold
-
-    return {actionError, actionCorrectnessSum, #fold}
+    return {
+        actionCorrectness = actionCorrectnessSum,
+        actionNum = #fold, 
+        predActionCounts = predActionCounts, 
+        truthActionCounts = truthActionCounts,
+    }
 end
 
 function helper.calculateErrorOfFoldV6(network, fold)

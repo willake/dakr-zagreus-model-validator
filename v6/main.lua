@@ -29,6 +29,7 @@ table.remove(dataset, 1)
 -- shuffle the data set, improving generalizability
 helper.shuffleDataset(dataset)
 
+-- count the amount of each actions
 local counts = helper.countActions(dataset)
 
 print(table.concat(counts, ", "))

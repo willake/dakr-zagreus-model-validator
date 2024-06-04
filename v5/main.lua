@@ -26,19 +26,21 @@ end
 -- remove the first since it doesn't have second-previous data
 table.remove(dataset, 1)
 
+-- shuffle the data set, improving generalizability
 helper.shuffleDataset(dataset)
 
+-- count the amount of each actions
 local counts = helper.countActions(dataset)
 
 print(table.concat(counts, ", "))
 
 local folds = helper.splitDatasetToKFolds(dataset, k) -- for k-fold cross validation
 
-local gTrainingACCSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
-local gTrainingATCSum = 0 -- MSE of charge time
+local gTrainingCAC = 0 -- global training correct actions count
+local gTrainingTAC = 0 -- global training total actions count
 
-local gTestingACCSum = 0 -- Whether the predicted action holds highest probability is the same as ground truth
-local gTestingATCSum = 0 -- MSE of charge time
+local gTestingCAC = 0 -- global testing total actions count
+local gTestingTAC = 0 -- global testing total actions count
 
 for testIdx = 1, k do -- do k times
     local network = luann:new({16, 11, 11, 5}, learningRate, threshold)
@@ -56,47 +58,54 @@ for testIdx = 1, k do -- do k times
 
     local time = os.clock() - start
 
-    -- AE = Action error, ACC = Action correct count, ATC = Action total count, CTE = Charge time error
+    -- CAC = Correct actions count, TAC = Total actions count
     -- get training error
     -- validate model using folds other than i-th fold, which is the training set
-    local trainingAESum = 0
-    local trainingACCSum = 0
-    local trainingATCSum = 0
+    local trainingCAC = 0
+    local trainingTAC = 0
+    local trainingPredActions = {0, 0, 0, 0, 0, 0}
+    local trainingTruthActions = {0, 0, 0, 0, 0, 0}
     for idx = 1, k do
         if idx ~= testIdx then
-            local localErrors = helper.calculateErrorOfFold(network, folds[idx])
-            trainingAESum = trainingAESum + localErrors[1]
-            trainingACCSum = trainingACCSum + localErrors[2]
-            trainingATCSum = trainingATCSum + localErrors[3]
+            local localResult = helper.calculateErrorOfFoldV5(network, folds[idx])
+            trainingCAC = trainingCAC + localResult.actionCorrectness
+            trainingTAC = trainingTAC + localResult.actionNum
+            for i = 1, #localResult.predActionCounts do
+                trainingPredActions[i] = trainingPredActions[i] + localResult.predActionCounts[i]
+            end
+            for i = 1, #localResult.truthActionCounts do
+                trainingTruthActions[i] = trainingTruthActions[i] + localResult.truthActionCounts[i]
+            end
         end
     end
-
-    local trainingAE = trainingAESum / (k - 1)
-
     -- get testing error
     -- validate model using i-th fold, which is the testing set
-    local testingErrors = helper.calculateErrorOfFoldV5(network, folds[testIdx])
-    local testingAE = testingErrors[1]
-    local testingACC = testingErrors[2]
-    local testingATC = testingErrors[3]
-    local testingCTE = testingErrors[4]
+    local result = helper.calculateErrorOfFoldV5(network, folds[testIdx])
+    local testingCAC = result.actionCorrectness
+    local testingTAC = result.actionNum
+    local testingPredActions = result.predActionCounts
+    local testingTruthActions = result.truthActionCounts
 
     print(string.format("%dth iteration - training time: %.2f", 
         testIdx, time))
+    print(string.format("predict Actions: %s", table.concat(trainingPredActions, ", ")))
+    print(string.format("truth Actions: %s", table.concat(trainingTruthActions, ", ")))
     print(string.format("training action correctness: %.2f(%d/%d)",
-        trainingACCSum / trainingATCSum, trainingACCSum, trainingATCSum))
+        trainingCAC / trainingTAC, trainingCAC, trainingTAC))
+    print(string.format("predict Actions: %s", table.concat(testingPredActions, ", ")))
+    print(string.format("truth Actions: %s", table.concat(testingTruthActions, ", ")))
     print(string.format("testing action correctness: %.2f(%d/%d)", 
-        testingACC / testingATC, testingACC, testingATC, testingCTE))
+        testingCAC / testingTAC, testingCAC, testingTAC))
 
-    gTrainingACCSum = gTrainingACCSum + trainingACCSum
-    gTrainingATCSum = gTrainingATCSum + trainingATCSum
+    gTrainingCAC = gTrainingCAC + trainingCAC
+    gTrainingTAC = gTrainingTAC + trainingTAC
 
-    gTestingACCSum = gTestingACCSum + testingACC
-    gTestingATCSum = gTestingATCSum + testingATC
+    gTestingCAC = gTestingCAC + testingCAC
+    gTestingTAC = gTestingTAC + testingTAC
 end 
 
 print("Cross-validation result -")
 print(string.format("training action correctness: %.2f", 
-    gTrainingACCSum / gTrainingATCSum))
+    gTrainingCAC / gTrainingTAC))
 print(string.format("testing action correctness: %.2f", 
-    gTestingACCSum / gTestingATCSum))
+    gTestingCAC / gTestingTAC))
